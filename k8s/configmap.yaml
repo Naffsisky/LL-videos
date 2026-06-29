@@ -7,5 +7,5 @@ data:
   NODE_ENV: "production"
   MAX_ACTIVE_COURSES: "5"
   R2_BUCKET_NAME: "napskytech"
-  R2_PUBLIC_URL: "https://pub-7a86a28e5e554c329214c3b1b424673c.r2.dev"
+  R2_PUBLIC_URL: "https://r2.napskytech.com"
   REDIS_URL: "redis://redis:6379"
