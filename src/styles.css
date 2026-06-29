@@ -1039,3 +1039,261 @@ small,
   border-color: rgba(47, 191, 113, 0.45);
   background: rgba(47, 191, 113, 0.1);
 }
+
+/* ── Add Course button in topbar ── */
+.topbar {
+  flex-wrap: wrap;
+}
+
+.add-course-btn {
+  margin-left: auto;
+}
+
+/* ── Modal ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.65);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-header h2 {
+  font-size: 18px;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 18px;
+}
+
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.field-label small {
+  font-size: 12px;
+}
+
+.field-input {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0 12px;
+  color: var(--text);
+  background: #10100e;
+  outline: none;
+  font: inherit;
+}
+
+.field-input:focus {
+  border-color: rgba(47, 191, 113, 0.5);
+}
+
+.videos-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.videos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.add-video-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--accent);
+  background: rgba(47, 191, 113, 0.08);
+  cursor: pointer;
+}
+
+.add-video-btn:hover {
+  background: rgba(47, 191, 113, 0.16);
+}
+
+.videos-table-head {
+  display: grid;
+  grid-template-columns: 28px 1fr 1fr 28px;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.video-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 1fr 28px;
+  gap: 8px;
+  align-items: center;
+}
+
+.video-num {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.remove-video-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.remove-video-btn:hover:not(:disabled) {
+  border-color: rgba(227, 91, 91, 0.4);
+  color: var(--danger);
+  background: rgba(227, 91, 91, 0.08);
+}
+
+.remove-video-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+/* ── Topbar actions group ── */
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ── GDrive Import Modal ── */
+.modal-wide {
+  max-width: 780px;
+}
+
+.gdrive-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  padding: 24px 0;
+}
+
+.gdrive-hint {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.gdrive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.gdrive-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #10100e;
+}
+
+.gdrive-row.already {
+  opacity: 0.5;
+}
+
+.gdrive-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.gdrive-folder-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gdrive-folder-raw {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gdrive-badge-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.import-btn {
+  white-space: nowrap;
+  min-width: 100px;
+  justify-content: center;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}

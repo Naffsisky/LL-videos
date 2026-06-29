@@ -1,10 +1,14 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
 import { DeleteObjectsCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import prisma from "./prisma.js";
 import { uploadQueue } from "./queue.js";
 import "./worker.js";
+
+const execAsync = promisify(exec);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -21,6 +25,60 @@ const r2 = new S3Client({
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? ""
+  }
+});
+
+// ── GDrive Scan ───────────────────────────────────────────
+
+function titleFromFolder(name) {
+  return name
+    .replace(/^LinkedIn[-_\s]*/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function titleFromFile(name) {
+  return name
+    .replace(/^\d+[-_.\s]+/, "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+app.get("/api/gdrive/courses", async (_req, res) => {
+  try {
+    const { stdout } = await execAsync("rclone lsjson gdrive: --dirs-only", { timeout: 20000 });
+    const folders = JSON.parse(stdout || "[]");
+    const existingIds = (await prisma.course.findMany({ select: { gdriveId: true } })).map(c => c.gdriveId);
+    res.json(
+      folders.map((f) => ({
+        name: f.Name,
+        suggestedTitle: titleFromFolder(f.Name),
+        alreadyImported: existingIds.includes(f.Name)
+      }))
+    );
+  } catch (err) {
+    res.status(503).json({ error: "Gagal scan GDrive: " + err.message });
+  }
+});
+
+app.get("/api/gdrive/files", async (req, res) => {
+  const folder = String(req.query.folder || "");
+  if (!folder || folder.includes("..")) return res.status(400).json({ error: "Invalid folder" });
+  try {
+    const { stdout } = await execAsync(`rclone lsjson "gdrive:${folder}" --files-only`, { timeout: 20000 });
+    const files = JSON.parse(stdout || "[]");
+    const videoExt = /\.(mp4|mkv|webm|mov|avi|m4v)$/i;
+    const videos = files
+      .filter((f) => videoExt.test(f.Name))
+      .sort((a, b) => a.Name.localeCompare(b.Name, undefined, { numeric: true }))
+      .map((f, i) => ({ title: titleFromFile(f.Name) || `Part ${i + 1}`, gdriveFileId: f.Name }));
+    res.json(videos);
+  } catch (err) {
+    res.status(503).json({ error: "Gagal list files: " + err.message });
   }
 });
 
@@ -69,6 +127,51 @@ app.get("/api/library", async (_req, res, next) => {
         }))
       }))
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Course CRUD ───────────────────────────────────────────
+
+app.post("/api/courses", async (req, res, next) => {
+  try {
+    const { title, description, gdriveId, videos = [] } = req.body;
+    if (!title?.trim()) return res.status(400).json({ error: "title wajib diisi" });
+    if (!gdriveId?.trim()) return res.status(400).json({ error: "gdriveId wajib diisi" });
+    if (!videos.length) return res.status(400).json({ error: "minimal 1 video" });
+
+    const course = await prisma.course.create({
+      data: {
+        title: title.trim(),
+        description: description?.trim() || null,
+        gdriveId: gdriveId.trim(),
+        videos: {
+          create: videos.map((v, i) => ({
+            title: v.title.trim(),
+            orderIndex: v.orderIndex ?? i + 1,
+            gdriveFileId: v.gdriveFileId.trim(),
+            durationSecs: v.durationSecs ? Number(v.durationSecs) : null
+          }))
+        }
+      },
+      include: { videos: { orderBy: { orderIndex: "asc" } } }
+    });
+
+    res.status(201).json(course);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete("/api/courses/:id", async (req, res, next) => {
+  try {
+    const courseId = Number(req.params.id);
+    await prisma.video.deleteMany({ where: { courseId } });
+    await prisma.courseNote.deleteMany({ where: { courseId } });
+    await prisma.courseMeta.deleteMany({ where: { courseId } });
+    await prisma.course.delete({ where: { id: courseId } });
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

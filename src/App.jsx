@@ -9,11 +9,14 @@ import {
   Circle,
   CirclePlay,
   Clock3,
+  Download,
   FolderOpen,
   ListVideo,
+  Loader2,
   NotebookText,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
   RefreshCw,
   Save,
   Search,
@@ -22,8 +25,136 @@ import {
   Star,
   Upload,
   Trash2,
-  Layers
+  Layers,
+  X
 } from "lucide-react";
+
+const emptyVideo = () => ({ title: "", gdriveFileId: "", orderIndex: "" });
+
+function AddCourseModal({ onClose, onSaved }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [gdriveId, setGdriveId] = useState("");
+  const [videos, setVideos] = useState([emptyVideo()]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  function updateVideo(index, field, value) {
+    setVideos((prev) => prev.map((v, i) => i === index ? { ...v, [field]: value } : v));
+  }
+
+  function addVideoRow() {
+    setVideos((prev) => [...prev, emptyVideo()]);
+  }
+
+  function removeVideoRow(index) {
+    setVideos((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setSaving(true);
+    try {
+      const payload = {
+        title,
+        description,
+        gdriveId,
+        videos: videos
+          .filter((v) => v.title.trim() && v.gdriveFileId.trim())
+          .map((v, i) => ({ ...v, orderIndex: Number(v.orderIndex) || i + 1 }))
+      };
+      const res = await fetch("/api/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Gagal menyimpan"); return; }
+      onSaved();
+      onClose();
+    } catch {
+      setError("Gagal menyimpan course");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2>Tambah Course</h2>
+          <button className="icon-button" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <form className="modal-body" onSubmit={handleSubmit}>
+          {error && <div className="action-error">{error}</div>}
+
+          <label className="field-label">
+            Judul Course *
+            <input className="field-input" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Docker & Kubernetes Fundamentals" />
+          </label>
+
+          <label className="field-label">
+            Deskripsi
+            <input className="field-input" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opsional" />
+          </label>
+
+          <label className="field-label">
+            Google Drive Folder ID *
+            <input className="field-input" value={gdriveId} onChange={(e) => setGdriveId(e.target.value)} required placeholder="1ABC123xyz456DEF" />
+            <small>Dari URL: drive.google.com/drive/folders/<strong>ID_INI</strong></small>
+          </label>
+
+          <div className="videos-section">
+            <div className="videos-header">
+              <span>Video ({videos.length})</span>
+              <button type="button" className="add-video-btn" onClick={addVideoRow}>
+                <Plus size={14} /> Tambah baris
+              </button>
+            </div>
+
+            <div className="videos-table-head">
+              <span>#</span>
+              <span>Judul Video</span>
+              <span>Nama File di GDrive</span>
+              <span></span>
+            </div>
+
+            {videos.map((v, i) => (
+              <div key={i} className="video-row">
+                <span className="video-num">{i + 1}</span>
+                <input
+                  className="field-input"
+                  value={v.title}
+                  onChange={(e) => updateVideo(i, "title", e.target.value)}
+                  placeholder="01 - Introduction"
+                />
+                <input
+                  className="field-input"
+                  value={v.gdriveFileId}
+                  onChange={(e) => updateVideo(i, "gdriveFileId", e.target.value)}
+                  placeholder="01-introduction.mp4"
+                />
+                <button type="button" className="remove-video-btn" onClick={() => removeVideoRow(i)} disabled={videos.length === 1}>
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="secondary-button" onClick={onClose}>Batal</button>
+            <button type="submit" className="primary-button" disabled={saving}>
+              {saving ? "Menyimpan..." : "Simpan Course"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 const coursesPerPage = 6;
 const defaultCourseMeta = { status: "unwatched", isWishlist: false, updatedAt: null };
@@ -83,6 +214,109 @@ function CourseMetaControls({ meta, onStatusChange, onWishlistToggle }) {
   );
 }
 
+function ImportFromGDriveModal({ onClose, onSaved }) {
+  const [courses, setCourses] = useState(null);
+  const [error, setError] = useState("");
+  const [importing, setImporting] = useState(null);
+  const [done, setDone] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/gdrive/courses")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) setError(data.error);
+        else setCourses(data);
+      })
+      .catch(() => setError("Gagal menghubungi server"));
+  }, []);
+
+  async function handleImport(folder) {
+    setImporting(folder.name);
+    setError("");
+    try {
+      const filesRes = await fetch(`/api/gdrive/files?folder=${encodeURIComponent(folder.name)}`);
+      const files = await filesRes.json();
+      if (files.error) { setError(files.error); setImporting(null); return; }
+      if (!files.length) { setError(`Tidak ada video di folder "${folder.name}"`); setImporting(null); return; }
+
+      const payload = {
+        title: folder.suggestedTitle,
+        gdriveId: folder.name,
+        videos: files.map((f, i) => ({ ...f, orderIndex: i + 1 }))
+      };
+      const saveRes = await fetch("/api/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const saved = await saveRes.json();
+      if (!saveRes.ok) { setError(saved.error ?? "Gagal menyimpan"); setImporting(null); return; }
+
+      setDone((prev) => [...prev, folder.name]);
+      setCourses((prev) => prev.map((c) => c.name === folder.name ? { ...c, alreadyImported: true } : c));
+    } catch {
+      setError("Import gagal");
+    } finally {
+      setImporting(null);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal modal-wide">
+        <div className="modal-header">
+          <h2>Import dari Google Drive</h2>
+          <button className="icon-button" onClick={() => { onSaved(); onClose(); }}><X size={18} /></button>
+        </div>
+
+        <div className="modal-body">
+          {error && <div className="action-error">{error}</div>}
+          {!courses && !error && (
+            <div className="gdrive-loading">
+              <Loader2 size={22} className="spin" />
+              <span>Scanning Google Drive...</span>
+            </div>
+          )}
+          {courses && (
+            <>
+              <p className="gdrive-hint">
+                {courses.length} folder ditemukan. Klik <strong>Import</strong> untuk menambahkan ke library.
+              </p>
+              <div className="gdrive-list">
+                {courses.map((folder) => {
+                  const isDone = done.includes(folder.name);
+                  const isImporting = importing === folder.name;
+                  return (
+                    <div key={folder.name} className={`gdrive-row ${folder.alreadyImported ? "already" : ""}`}>
+                      <div className="gdrive-row-info">
+                        <span className="gdrive-folder-name">{folder.suggestedTitle}</span>
+                        <span className="gdrive-folder-raw">{folder.name}</span>
+                      </div>
+                      {folder.alreadyImported ? (
+                        <span className="gdrive-badge-done">
+                          <CheckCircle2 size={14} /> {isDone ? "Baru diimport" : "Sudah ada"}
+                        </span>
+                      ) : (
+                        <button
+                          className="primary-button import-btn"
+                          onClick={() => handleImport(folder)}
+                          disabled={!!importing}
+                        >
+                          {isImporting ? <><Loader2 size={14} className="spin" /> Importing...</> : <><Download size={14} /> Import</>}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const videoRef = useRef(null);
   const transcriptRef = useRef(null);
@@ -109,6 +343,8 @@ function App() {
   const [activating, setActivating] = useState(null);
   const [deactivating, setDeactivating] = useState(null);
   const [actionError, setActionError] = useState("");
+  const [showAddCourse, setShowAddCourse] = useState(false);
+  const [showImportGDrive, setShowImportGDrive] = useState(false);
 
   const courses = library?.courses ?? [];
   const slotsUsed = library?.slotsUsed ?? 0;
@@ -497,6 +733,16 @@ function App() {
                 <p>{page === "notes" ? "Saved notes" : "Library"}</p>
                 <h2>{page === "wishlist" ? "Wishlist" : page === "notes" ? "Notes" : "Courses"}</h2>
               </div>
+              {page === "courses" && (
+                <div className="topbar-actions">
+                  <button className="secondary-button" onClick={() => setShowImportGDrive(true)}>
+                    <Download size={16} /> Import GDrive
+                  </button>
+                  <button className="primary-button" onClick={() => setShowAddCourse(true)}>
+                    <Plus size={16} /> Manual
+                  </button>
+                </div>
+              )}
             </header>
 
             {actionError && (
@@ -832,6 +1078,19 @@ function App() {
           </>
         )}
       </section>
+
+      {showAddCourse && (
+        <AddCourseModal
+          onClose={() => setShowAddCourse(false)}
+          onSaved={loadLibrary}
+        />
+      )}
+      {showImportGDrive && (
+        <ImportFromGDriveModal
+          onClose={() => setShowImportGDrive(false)}
+          onSaved={loadLibrary}
+        />
+      )}
     </main>
   );
 }
