@@ -367,6 +367,7 @@ function App() {
   const [showImportGDrive, setShowImportGDrive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
   const [transcript, setTranscript] = useState([]);
+  const [vttBlobUrl, setVttBlobUrl] = useState(null);
 
   const courses = library?.courses ?? [];
   const slotsUsed = library?.slotsUsed ?? 0;
@@ -556,14 +557,23 @@ function App() {
 
   // Fetch & parse VTT when lesson changes
   useEffect(() => {
-    if (!currentLesson?.r2Url) { setTranscript([]); return; }
+    if (!currentLesson?.r2Url) { setTranscript([]); setVttBlobUrl(null); return; }
     const vttUrl = currentLesson.r2Url.replace(/\.[^.]+$/, ".vtt");
     let cancelled = false;
+    let blobUrl = null;
     fetch(vttUrl)
       .then((r) => (r.ok ? r.text() : Promise.reject()))
-      .then((text) => { if (!cancelled) setTranscript(parseVtt(text)); })
-      .catch(() => { if (!cancelled) setTranscript([]); });
-    return () => { cancelled = true; };
+      .then((text) => {
+        if (cancelled) return;
+        setTranscript(parseVtt(text));
+        blobUrl = URL.createObjectURL(new Blob([text], { type: "text/vtt" }));
+        setVttBlobUrl(blobUrl);
+      })
+      .catch(() => { if (!cancelled) { setTranscript([]); setVttBlobUrl(null); } });
+    return () => {
+      cancelled = true;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
   }, [currentLesson?.id]);
 
   function selectCourse(courseId) {
@@ -1049,7 +1059,14 @@ function App() {
                         onLoadedMetadata={handleLoadedMetadata}
                       >
                         <source src={currentLesson.r2Url} type="video/mp4" />
+                        {vttBlobUrl && (
+                          <track key={vttBlobUrl} kind="subtitles" src={vttBlobUrl} label="Subtitles" default />
+                        )}
                       </video>
+                      {(() => {
+                        const cue = transcript.find((c) => currentTime >= c.start && currentTime < c.end);
+                        return cue ? <div className="video-caption">{cue.text}</div> : null;
+                      })()}
                       {playBlocked && (
                         <button className="play-overlay" onClick={() => videoRef.current?.play().then(() => setPlayBlocked(false))}>
                           <CirclePlay size={42} /> Play

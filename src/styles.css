@@ -567,6 +567,24 @@ small,
   min-width: 0;
 }
 
+.video-caption {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 82%;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.78);
+  padding: 5px 14px;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: pre-wrap;
+  z-index: 3;
+}
+
 .video-stage {
   position: relative;
   width: 100%;
