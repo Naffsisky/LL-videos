@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Course {
+  id          Int         @id @default(autoincrement())
+  title       String
+  description String?
+  thumbnail   String?
+  gdriveId    String      @unique
+  status      Status      @default(NOT_READY)
+  activatedAt DateTime?
+  totalSizeMb Float?
+  videos      Video[]
+  note        CourseNote?
+  meta        CourseMeta?
+  createdAt   DateTime    @default(now())
+}
+
+model Video {
+  id           Int       @id @default(autoincrement())
+  courseId     Int
+  course       Course    @relation(fields: [courseId], references: [id])
+  title        String
+  orderIndex   Int
+  gdriveFileId String
+  r2Url        String?
+  durationSecs Int?
+  watched      Boolean   @default(false)
+  watchedAt    DateTime?
+}
+
+model CourseNote {
+  id        Int      @id @default(autoincrement())
+  courseId  Int      @unique
+  course    Course   @relation(fields: [courseId], references: [id])
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CourseMeta {
+  id         Int         @id @default(autoincrement())
+  courseId   Int         @unique
+  course     Course      @relation(fields: [courseId], references: [id])
+  status     WatchStatus @default(UNWATCHED)
+  isWishlist Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+enum Status {
+  NOT_READY
+  UPLOADING
+  READY
+}
+
+enum WatchStatus {
+  UNWATCHED
+  WATCHING
+  WATCHED
+}
