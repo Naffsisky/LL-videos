@@ -75,12 +75,10 @@ jobs:
 
       - name: Update image
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          IMAGE="ghcr.io/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA}"
-          echo "Deploying image: ${IMAGE}"
           kubectl set image deployment/learning-app \
-            app=${IMAGE} \
+            app=ghcr.io/${{ env.IMAGE_NAME }}:latest \
             -n learn
+          kubectl rollout restart deployment/learning-app -n learn
 
       - name: Verify rollout
         run: |
