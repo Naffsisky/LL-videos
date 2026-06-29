@@ -31,6 +31,26 @@ import {
 
 const emptyVideo = () => ({ title: "", gdriveFileId: "", orderIndex: "" });
 
+function parseVtt(text) {
+  const cues = [];
+  const blocks = text.replace(/\r\n/g, "\n").split(/\n\n+/);
+  const toSecs = (ts) => {
+    const parts = ts.trim().replace(/,/g, ".").split(":").map(Number);
+    return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : parts[0] * 60 + parts[1];
+  };
+  for (const block of blocks) {
+    const lines = block.trim().split("\n");
+    const timeIdx = lines.findIndex((l) => l.includes("-->"));
+    if (timeIdx === -1) continue;
+    const [startStr, endStr] = lines[timeIdx].split("-->").map((s) => s.split(" ").find(Boolean));
+    const textLines = lines.slice(timeIdx + 1).filter((l) => l.trim() && !l.startsWith("NOTE"));
+    if (textLines.length) {
+      cues.push({ start: toSecs(startStr), end: toSecs(endStr), text: textLines.join(" ").replace(/<[^>]+>/g, "") });
+    }
+  }
+  return cues;
+}
+
 function AddCourseModal({ onClose, onSaved }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -346,6 +366,7 @@ function App() {
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [showImportGDrive, setShowImportGDrive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
+  const [transcript, setTranscript] = useState([]);
 
   const courses = library?.courses ?? [];
   const slotsUsed = library?.slotsUsed ?? 0;
@@ -531,7 +552,19 @@ function App() {
     if (!active) return;
     const top = active.offsetTop - panel.clientHeight / 2 + active.clientHeight / 2;
     panel.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-  }, []);
+  });
+
+  // Fetch & parse VTT when lesson changes
+  useEffect(() => {
+    if (!currentLesson?.r2Url) { setTranscript([]); return; }
+    const vttUrl = currentLesson.r2Url.replace(/\.[^.]+$/, ".vtt");
+    let cancelled = false;
+    fetch(vttUrl)
+      .then((r) => (r.ok ? r.text() : Promise.reject()))
+      .then((text) => { if (!cancelled) setTranscript(parseVtt(text)); })
+      .catch(() => { if (!cancelled) setTranscript([]); });
+    return () => { cancelled = true; };
+  }, [currentLesson?.id]);
 
   function selectCourse(courseId) {
     setSelectedCourseId(courseId);
@@ -1071,7 +1104,26 @@ function App() {
                     <h3>Transcript</h3>
                   </div>
                   <div className="transcript-list" ref={transcriptRef}>
-                    <div className="muted-line">Transcript tidak tersedia untuk course ini.</div>
+                    {transcript.length === 0 ? (
+                      <div className="muted-line">Transcript tidak tersedia untuk video ini.</div>
+                    ) : (
+                      transcript.map((cue, i) => {
+                        const isActive = currentTime >= cue.start && currentTime < cue.end;
+                        return (
+                          <button
+                            key={i}
+                            className={`transcript-cue ${isActive ? "active" : ""}`}
+                            data-active={isActive}
+                            onClick={() => { if (videoRef.current) videoRef.current.currentTime = cue.start; }}
+                          >
+                            <time>
+                              {Math.floor(cue.start / 60).toString().padStart(2, "0")}:{Math.floor(cue.start % 60).toString().padStart(2, "0")}
+                            </time>
+                            <span>{cue.text}</span>
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 </section>
 
