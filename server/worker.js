@@ -65,4 +65,8 @@ worker.on("failed", async (job, err) => {
   }
 });
 
+worker.on("error", (err) => {
+  console.error("[worker] Worker error:", err.message);
+});
+
 export default worker;

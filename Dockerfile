@@ -1,7 +1,7 @@
 FROM node:20-alpine AS base
 
 # Install rclone
-RUN apk add --no-cache curl unzip && \
+RUN apk add --no-cache curl unzip openssl && \
     curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip && \
     unzip rclone-current-linux-amd64.zip && \
     mv rclone-*/rclone /usr/local/bin/ && \
