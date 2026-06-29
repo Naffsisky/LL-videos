@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: ghcr.io/napsky/video-learning:latest
+          image: ghcr.io/naffsisky/video-learning:latest
           ports:
             - containerPort: 3000
           envFrom:
