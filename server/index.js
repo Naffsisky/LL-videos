@@ -167,6 +167,25 @@ app.post("/api/courses", async (req, res, next) => {
 app.delete("/api/courses/:id", async (req, res, next) => {
   try {
     const courseId = Number(req.params.id);
+
+    // Clean up R2 files if any
+    try {
+      const listed = await r2.send(
+        new ListObjectsV2Command({ Bucket: process.env.R2_BUCKET_NAME, Prefix: `course-${courseId}/` })
+      );
+      if (listed.Contents?.length) {
+        await r2.send(
+          new DeleteObjectsCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Delete: { Objects: listed.Contents.map((o) => ({ Key: o.Key })) }
+          })
+        );
+      }
+    } catch (r2Err) {
+      console.error(`[delete] R2 cleanup failed for course ${courseId}:`, r2Err.message);
+      // Continue with DB delete even if R2 fails
+    }
+
     await prisma.video.deleteMany({ where: { courseId } });
     await prisma.courseNote.deleteMany({ where: { courseId } });
     await prisma.courseMeta.deleteMany({ where: { courseId } });
