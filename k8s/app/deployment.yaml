@@ -38,3 +38,4 @@ spec:
         - name: rclone-config
           secret:
             secretName: rclone-config
+            optional: true
