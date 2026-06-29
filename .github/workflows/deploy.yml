@@ -85,9 +85,3 @@ jobs:
           kubectl rollout status deployment/learning-app \
             -n learn --timeout=180s
 
-      - name: Sync DB Schema
-        run: |
-          kubectl exec -n learn deploy/learning-app -c app \
-            -- npx prisma db execute \
-               --file ./prisma/setup.sql \
-               --schema ./prisma/schema.prisma
