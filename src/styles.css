@@ -776,6 +776,14 @@ small,
   background: var(--bg);
 }
 
+.empty-state-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}
+
 .primary-button {
   border-radius: 7px;
   padding: 0 14px;

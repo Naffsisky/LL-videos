@@ -648,9 +648,23 @@ function App() {
       <main className="empty-state">
         <FolderOpen size={32} />
         <span>{error || "Belum ada course di database"}</span>
-        <button className="primary-button" onClick={loadLibrary}>
-          <RefreshCw size={18} /> Refresh
-        </button>
+        <div className="empty-state-actions">
+          <button className="secondary-button" onClick={() => setShowImportGDrive(true)}>
+            <Download size={16} /> Import GDrive
+          </button>
+          <button className="primary-button" onClick={() => setShowAddCourse(true)}>
+            <Plus size={16} /> Tambah Manual
+          </button>
+          <button className="icon-button" onClick={loadLibrary} title="Refresh">
+            <RefreshCw size={18} />
+          </button>
+        </div>
+        {showAddCourse && (
+          <AddCourseModal onClose={() => setShowAddCourse(false)} onSaved={loadLibrary} />
+        )}
+        {showImportGDrive && (
+          <ImportFromGDriveModal onClose={() => setShowImportGDrive(false)} onSaved={loadLibrary} />
+        )}
       </main>
     );
   }
