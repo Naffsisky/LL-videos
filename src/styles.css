@@ -931,6 +931,33 @@ small,
   animation: pulse 1.8s ease-in-out infinite;
 }
 
+/* ── Upload progress bar ── */
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.upload-progress-bar {
+  height: 4px;
+  background: rgba(230, 180, 80, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.upload-progress-fill {
+  height: 100%;
+  background: var(--accent-2);
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.upload-progress-label {
+  font-size: 12px;
+  color: var(--accent-2);
+}
+
 .activation-ready {
   color: var(--accent);
   border: 1px solid rgba(47, 191, 113, 0.45);
@@ -979,6 +1006,32 @@ small,
 .activate-button:disabled,
 .deactivate-button:disabled {
   opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.delete-course-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.delete-course-button:hover:not(:disabled) {
+  border-color: rgba(227, 91, 91, 0.45);
+  color: var(--danger);
+  background: rgba(227, 91, 91, 0.08);
+}
+
+.delete-course-button:disabled {
+  opacity: 0.3;
   cursor: not-allowed;
 }
 

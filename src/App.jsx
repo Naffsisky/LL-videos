@@ -345,6 +345,7 @@ function App() {
   const [actionError, setActionError] = useState("");
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [showImportGDrive, setShowImportGDrive] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({});
 
   const courses = library?.courses ?? [];
   const slotsUsed = library?.slotsUsed ?? 0;
@@ -453,12 +454,29 @@ function App() {
     loadNotesIndex();
   }, [loadLibrary, loadNotesIndex]);
 
-  // Poll every 5s while any course is UPLOADING
+  // Poll library every 5s + upload progress every 2s while any course is UPLOADING
   useEffect(() => {
-    const hasUploading = library?.courses?.some((c) => c.status === "UPLOADING");
-    if (!hasUploading) return;
-    const timer = setInterval(loadLibrary, 5000);
-    return () => clearInterval(timer);
+    const uploadingCourses = library?.courses?.filter((c) => c.status === "UPLOADING") ?? [];
+    if (!uploadingCourses.length) return;
+
+    const libraryTimer = setInterval(loadLibrary, 5000);
+
+    const progressTimer = setInterval(async () => {
+      const results = await Promise.all(
+        uploadingCourses.map((c) =>
+          fetch(`/api/courses/${c.id}/progress`).then((r) => r.json()).then((d) => [c.id, d]).catch(() => null)
+        )
+      );
+      setUploadProgress((prev) => {
+        const next = { ...prev };
+        for (const entry of results) {
+          if (entry) next[entry[0]] = entry[1];
+        }
+        return next;
+      });
+    }, 2000);
+
+    return () => { clearInterval(libraryTimer); clearInterval(progressTimer); };
   }, [library, loadLibrary]);
 
   useEffect(() => { setCoursePage(1); }, [page, query]);
@@ -820,6 +838,25 @@ function App() {
                             <WatchStatusBadge status={meta.status} />
                           </div>
 
+                          {course.status === "UPLOADING" && (() => {
+                            const prog = uploadProgress[course.id];
+                            const pct = prog?.percent ?? 0;
+                            const transferred = prog?.transferred ?? 0;
+                            const total = prog?.total ?? null;
+                            return (
+                              <div className="upload-progress">
+                                <div className="upload-progress-bar">
+                                  <div className="upload-progress-fill" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="upload-progress-label">
+                                  {total
+                                    ? `${transferred} / ${total} file · ${pct}%`
+                                    : "Menghitung…"}
+                                </span>
+                              </div>
+                            );
+                          })()}
+
                           <CourseMetaControls
                             meta={meta}
                             onStatusChange={(status) => updateCourseMeta(course.id, { status })}
@@ -867,6 +904,20 @@ function App() {
                             >
                               <CirclePlay size={18} />
                               Open Course
+                            </button>
+                            <button
+                              className="delete-course-button"
+                              title="Hapus course dari database"
+                              onClick={() => {
+                                if (confirm(`Hapus "${course.title}" dari database? File di R2 tidak ikut terhapus.`)) {
+                                  fetch(`/api/courses/${course.id}`, { method: "DELETE" })
+                                    .then(() => loadLibrary())
+                                    .catch(() => setActionError("Gagal menghapus course"));
+                                }
+                              }}
+                              disabled={course.status === "UPLOADING"}
+                            >
+                              <Trash2 size={15} />
                             </button>
                           </div>
                         </article>

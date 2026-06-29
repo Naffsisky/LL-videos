@@ -5,7 +5,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { DeleteObjectsCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import prisma from "./prisma.js";
-import { uploadQueue } from "./queue.js";
+import { uploadQueue, connection as redisConn } from "./queue.js";
 import "./worker.js";
 
 const execAsync = promisify(exec);
@@ -172,6 +172,28 @@ app.delete("/api/courses/:id", async (req, res, next) => {
     await prisma.courseMeta.deleteMany({ where: { courseId } });
     await prisma.course.delete({ where: { id: courseId } });
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Upload Progress ───────────────────────────────────────
+
+app.get("/api/courses/:id/progress", async (req, res, next) => {
+  try {
+    const courseId = Number(req.params.id);
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { status: true } });
+    if (!course) return res.status(404).json({ error: "Not found" });
+
+    if (course.status === "READY") return res.json({ percent: 100, transferred: null, total: null, done: true });
+    if (course.status === "NOT_READY") return res.json({ percent: 0, transferred: 0, total: 0, done: false });
+
+    const raw = await redisConn.get(`upload:progress:${courseId}`);
+    if (!raw) return res.json({ percent: 0, transferred: 0, total: null, done: false });
+
+    const { transferred, total } = JSON.parse(raw);
+    const percent = total > 0 ? Math.round((transferred / total) * 100) : 0;
+    res.json({ percent, transferred, total, done: false });
   } catch (err) {
     next(err);
   }

@@ -34,4 +34,5 @@ COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3000
 ENV PORT=3000
-CMD ["node", "server/index.js"]
+# Copy rclone config to writable /tmp so OAuth tokens can be refreshed
+CMD ["/bin/sh", "-c", "mkdir -p /tmp/rclone && cp /root/.config/rclone/rclone.conf /tmp/rclone/rclone.conf 2>/dev/null || true; RCLONE_CONFIG=/tmp/rclone/rclone.conf exec node server/index.js"]
