@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/video-learning
+  IMAGE_NAME: naffsisky/video-learning
 
 jobs:
   build:
