@@ -949,6 +949,68 @@ small,
   animation: pulse 1.8s ease-in-out infinite;
 }
 
+/* ── Slot full banner ── */
+.slot-full-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(227, 91, 91, 0.12);
+  border: 1px solid rgba(227, 91, 91, 0.35);
+  color: #f08080;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+/* ── Watch filter bar ── */
+.watch-filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.filter-chip:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.filter-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(47, 191, 113, 0.08);
+}
+
+.filter-chip-count {
+  background: var(--line);
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 18px;
+  text-align: center;
+}
+
+.filter-chip.active .filter-chip-count {
+  background: rgba(47, 191, 113, 0.2);
+  color: var(--accent);
+}
+
 /* ── Upload progress bar ── */
 .upload-progress {
   display: flex;
@@ -1306,6 +1368,31 @@ small,
   font-size: 14px;
   color: var(--muted);
   margin-bottom: 8px;
+}
+
+.gdrive-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  color: var(--muted);
+}
+
+.gdrive-search-box input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.gdrive-search-box input::placeholder {
+  color: var(--muted);
 }
 
 .gdrive-list {

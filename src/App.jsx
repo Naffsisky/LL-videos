@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertCircle,
   ArrowLeft,
   BookOpen,
   Captions,
@@ -239,6 +240,7 @@ function ImportFromGDriveModal({ onClose, onSaved }) {
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(null);
   const [done, setDone] = useState([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetch("/api/gdrive/courses")
@@ -302,8 +304,23 @@ function ImportFromGDriveModal({ onClose, onSaved }) {
               <p className="gdrive-hint">
                 {courses.length} folder ditemukan. Klik <strong>Import</strong> untuk menambahkan ke library.
               </p>
+              <label className="gdrive-search-box">
+                <Search size={15} />
+                <input
+                  type="search"
+                  placeholder="Cari course..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  autoFocus
+                />
+              </label>
               <div className="gdrive-list">
-                {courses.map((folder) => {
+                {courses
+                  .filter((f) => {
+                    const q = search.trim().toLowerCase();
+                    return !q || f.suggestedTitle.toLowerCase().includes(q) || f.name.toLowerCase().includes(q);
+                  })
+                  .map((folder) => {
                   const isDone = done.includes(folder.name);
                   const isImporting = importing === folder.name;
                   return (
@@ -331,6 +348,7 @@ function ImportFromGDriveModal({ onClose, onSaved }) {
               </div>
             </>
           )}
+
         </div>
       </div>
     </div>
@@ -365,6 +383,7 @@ function App() {
   const [actionError, setActionError] = useState("");
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [showImportGDrive, setShowImportGDrive] = useState(false);
+  const [watchFilter, setWatchFilter] = useState("all");
   const [uploadProgress, setUploadProgress] = useState({});
   const [transcript, setTranscript] = useState([]);
   const [vttBlobUrl, setVttBlobUrl] = useState(null);
@@ -393,9 +412,11 @@ function App() {
   }, [courses, query]);
 
   const pageCourses = useMemo(() => {
-    if (page === "wishlist") return filteredCourses.filter((c) => getCourseMeta(c.id).isWishlist);
-    return filteredCourses;
-  }, [filteredCourses, getCourseMeta, page]);
+    let result = filteredCourses;
+    if (page === "wishlist") result = result.filter((c) => getCourseMeta(c.id).isWishlist);
+    if (watchFilter !== "all") result = result.filter((c) => getCourseMeta(c.id).status === watchFilter);
+    return result;
+  }, [filteredCourses, getCourseMeta, page, watchFilter]);
 
   const totalCoursePages = Math.max(1, Math.ceil(pageCourses.length / coursesPerPage));
   const visibleCourses = useMemo(() => {
@@ -501,7 +522,7 @@ function App() {
     return () => { clearInterval(libraryTimer); clearInterval(progressTimer); };
   }, [library, loadLibrary]);
 
-  useEffect(() => { setCoursePage(1); }, [page, query]);
+  useEffect(() => { setCoursePage(1); }, [page, query, watchFilter]);
   useEffect(() => {
     setCoursePage((cur) => Math.min(cur, totalCoursePages));
   }, [totalCoursePages]);
@@ -853,6 +874,38 @@ function App() {
               </section>
             ) : (
               <>
+                {slotsUsed >= maxSlots && (
+                  <div className="slot-full-banner">
+                    <AlertCircle size={16} />
+                    Slot aktif penuh ({slotsUsed}/{maxSlots}). Deactivate atau hapus course yang sudah tidak dibutuhkan sebelum mengaktifkan yang baru.
+                  </div>
+                )}
+
+                <div className="watch-filter-bar">
+                  {[
+                    { value: "all", label: "Semua" },
+                    { value: "unwatched", label: "Belum ditonton" },
+                    { value: "watching", label: "Sedang ditonton" },
+                    { value: "watched", label: "Sudah ditonton" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      className={`filter-chip ${watchFilter === opt.value ? "active" : ""}`}
+                      onClick={() => setWatchFilter(opt.value)}
+                    >
+                      {opt.label}
+                      {opt.value !== "all" && (
+                        <span className="filter-chip-count">
+                          {filteredCourses.filter((c) =>
+                            (page !== "wishlist" || getCourseMeta(c.id).isWishlist) &&
+                            getCourseMeta(c.id).status === opt.value
+                          ).length}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
                 <section className="course-page">
                   {visibleCourses.length === 0 ? (
                     <div className="empty-panel">
@@ -952,7 +1005,7 @@ function App() {
                               className="delete-course-button"
                               title="Hapus course dari database"
                               onClick={() => {
-                                if (confirm(`Hapus "${course.title}" dari database? File di R2 tidak ikut terhapus.`)) {
+                                if (confirm(`Hapus "${course.title}"? Data di database dan file di R2 akan ikut terhapus.`)) {
                                   fetch(`/api/courses/${course.id}`, { method: "DELETE" })
                                     .then(() => loadLibrary())
                                     .catch(() => setActionError("Gagal menghapus course"));
